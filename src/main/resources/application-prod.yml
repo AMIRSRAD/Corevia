@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: ${COREVIA_DATABASE_URL}
+    username: ${COREVIA_DATABASE_USERNAME}
+    password: ${COREVIA_DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: ${COREVIA_DATABASE_POOL_SIZE:30}
+      minimum-idle: ${COREVIA_DATABASE_MIN_IDLE:5}
+      connection-timeout: 5000
+      validation-timeout: 2000
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${COREVIA_OIDC_ISSUER}
+
+corevia:
+  security:
+    enabled: true
+
+spring.h2.console.enabled: false

@@ -1,0 +1,32 @@
+pack:
+  id: iran
+  version: 1
+  status: planning
+  canonicalCurrency: IRR
+  displayLocales: [fa-IR, en]
+  primaryLocale: fa-IR
+  direction: rtl
+  timeZone: Asia/Tehran
+  businessCalendar: solar-hijri
+
+money:
+  ledgerDenomination: rial
+  presentationDenominations:
+    - code: toman
+      rialsPerUnit: 10
+      explicitSelectionRequired: true
+  futureRedenominationReady: true
+
+paymentRoadmap:
+  wave1: [paya, satna, sheba-validation]
+  wave2: [sayad, chakavak, shetab, sahab, shaparak]
+  wave3: [taba]
+
+contractFamilies:
+  deposits: [qard-al-hasan-current, qard-al-hasan-savings, term-investment]
+  facilities: [qard-al-hasan, murabaha, civil-partnership, mudarabah, installment-sale, lease-to-own, jualah, salam]
+
+controls:
+  controlledSpecificationRequired: true
+  cbiApprovalRequired: true
+  legalFinanceRiskComplianceFiqhApprovalRequired: true

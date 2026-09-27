@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: ${COREVIA_DATABASE_URL:jdbc:postgresql://localhost:5432/corevia}
+    username: ${COREVIA_DATABASE_USERNAME:corevia}
+    password: ${COREVIA_DATABASE_PASSWORD:corevia-local-only}
+    driver-class-name: org.postgresql.Driver
+
+corevia:
+  security:
+    enabled: false
+
+spring.h2.console.enabled: false

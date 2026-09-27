@@ -1,0 +1,249 @@
+openapi: 3.1.0
+info:
+  title: Corevia Core API
+  version: 0.1.0
+  description: V1 account and immutable double-entry journal API. Monetary amounts are integer strings.
+servers:
+  - url: http://localhost:8080
+paths:
+  /api/v1/accounts:
+    post:
+      operationId: createAccount
+      summary: Create an account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAccountRequest'
+      responses:
+        '201':
+          description: Account created
+          headers:
+            Location:
+              schema: { type: string, format: uri-reference }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /api/v1/accounts/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      operationId: getAccount
+      summary: Get an account and its book balance
+      responses:
+        '200':
+          description: Account found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Account' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/journals:
+    post:
+      operationId: postJournal
+      summary: Post an immutable balanced journal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/LocalActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostingRequest' }
+      responses:
+        '201':
+          description: Journal posted, or the original result of an identical idempotent request
+          headers:
+            Location:
+              schema: { type: string, format: uri-reference }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Journal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+  /api/v1/journals/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      operationId: getJournal
+      summary: Get a journal and its entries
+      responses:
+        '200':
+          description: Journal found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Journal' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/v1/journals/{id}/reversals:
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    post:
+      operationId: reverseJournal
+      summary: Create the single opposite journal for an original journal
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+        - $ref: '#/components/parameters/LocalActorId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReversalRequest' }
+      responses:
+        '201':
+          description: Reversal posted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Journal' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Unprocessable' }
+components:
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string, minLength: 1, maxLength: 128 }
+    CorrelationId:
+      name: X-Correlation-ID
+      in: header
+      required: false
+      schema: { type: string, maxLength: 128 }
+    LocalActorId:
+      name: X-Actor-ID
+      in: header
+      required: false
+      description: Local-profile fallback only; production derives the actor from the authenticated principal.
+      schema: { type: string, maxLength: 200 }
+  schemas:
+    CreateAccountRequest:
+      type: object
+      required: [accountNumber, name, currency, normalBalance]
+      properties:
+        accountNumber: { type: string, maxLength: 64 }
+        name: { type: string, maxLength: 200 }
+        currency: { type: string, pattern: '^[A-Za-z]{3}$', examples: [IRR] }
+        normalBalance: { $ref: '#/components/schemas/EntrySide' }
+    Account:
+      type: object
+      required: [id, accountNumber, name, currency, normalBalance, status, debitTotal, creditTotal, bookBalance, version, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        accountNumber: { type: string }
+        name: { type: string }
+        currency: { type: string }
+        normalBalance: { $ref: '#/components/schemas/EntrySide' }
+        status: { type: string, enum: [OPEN, BLOCKED, CLOSED] }
+        debitTotal: { $ref: '#/components/schemas/IntegerAmount' }
+        creditTotal: { $ref: '#/components/schemas/IntegerAmount' }
+        bookBalance: { type: string, pattern: '^-?[0-9]+$' }
+        version: { type: integer, format: int64 }
+        createdAt: { type: string, format: date-time }
+    PostingRequest:
+      type: object
+      required: [businessDate, valueDate, narrative, entries]
+      properties:
+        businessDate: { type: string, format: date }
+        valueDate: { type: string, format: date }
+        narrative: { type: string, maxLength: 500 }
+        entries:
+          type: array
+          minItems: 2
+          maxItems: 1000
+          items: { $ref: '#/components/schemas/PostingLine' }
+    PostingLine:
+      type: object
+      required: [accountId, side, amount, currency]
+      properties:
+        accountId: { type: string, format: uuid }
+        side: { $ref: '#/components/schemas/EntrySide' }
+        amount: { $ref: '#/components/schemas/PositiveIntegerAmount' }
+        currency: { type: string, pattern: '^[A-Za-z]{3}$', examples: [IRR] }
+        description: { type: string, maxLength: 500 }
+    ReversalRequest:
+      type: object
+      required: [businessDate, valueDate, reason]
+      properties:
+        businessDate: { type: string, format: date }
+        valueDate: { type: string, format: date }
+        reason: { type: string, minLength: 1, maxLength: 450 }
+    Journal:
+      type: object
+      required: [id, idempotencyKey, correlationId, businessDate, valueDate, narrative, createdBy, createdAt, entries]
+      properties:
+        id: { type: string, format: uuid }
+        idempotencyKey: { type: string }
+        correlationId: { type: string }
+        businessDate: { type: string, format: date }
+        valueDate: { type: string, format: date }
+        narrative: { type: string }
+        reversalOf: { type: [string, 'null'], format: uuid }
+        createdBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/JournalEntry' }
+    JournalEntry:
+      type: object
+      required: [id, lineNumber, accountId, side, amount, currency, description]
+      properties:
+        id: { type: string, format: uuid }
+        lineNumber: { type: integer, minimum: 1 }
+        accountId: { type: string, format: uuid }
+        side: { $ref: '#/components/schemas/EntrySide' }
+        amount: { $ref: '#/components/schemas/PositiveIntegerAmount' }
+        currency: { type: string }
+        description: { type: string }
+    EntrySide:
+      type: string
+      enum: [DEBIT, CREDIT]
+    IntegerAmount:
+      type: string
+      pattern: '^[0-9]+$'
+      description: Integer amount in the currency's configured operational unit.
+    PositiveIntegerAmount:
+      type: string
+      pattern: '^[1-9][0-9]*$'
+      maxLength: 38
+      description: Positive integer amount; IRR requests are denominated in rials.
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+  responses:
+    BadRequest:
+      description: Invalid request syntax, field, or required header
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Idempotency or financial state conflict
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Unprocessable:
+      description: Financial business rule violation
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }

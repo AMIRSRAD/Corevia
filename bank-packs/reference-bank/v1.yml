@@ -1,0 +1,34 @@
+pack:
+  id: reference-bank
+  version: 1
+  status: development
+  jurisdiction: iran
+  legalEntityCode: REFERENCE
+  baseCurrency: IRR
+
+organization:
+  displayNameFa: بانک مرجع کورویا
+  displayNameEn: Corevia Reference Bank
+  branches:
+    - code: "0001"
+      nameFa: شعبه مرکزی
+      nameEn: Head Office
+
+accounting:
+  chartOfAccountsVersion: draft-v1
+  financialInvariantsConfigurable: false
+
+products:
+  launchCandidates:
+    - qard-al-hasan-current
+    - qard-al-hasan-savings
+    - term-investment
+    - murabaha
+
+approvals:
+  makerCheckerRequired: true
+  segregationOfDutiesRequired: true
+
+integrations:
+  endpointsConfigured: false
+  credentialsStoredInPack: false
